@@ -1,0 +1,125 @@
+import requests
+from bs4 import BeautifulSoup
+url='https://y20india.in/literacy-rates-in-india/'
+
+r=requests.get(url)
+htmlContent=r.content
+#print(htmlContent)
+
+soup = BeautifulSoup(htmlContent, 'html.parser')
+#print(soup.prettify)
+
+title=soup.title 
+#print(type(title.string))
+
+paras=soup.find_all('p')
+#print(paras)
+
+anchor=soup.find_all('a')
+#print(anchor)
+
+print(soup.find('p')['key'])
+
+
+
+import requests
+from bs4 import BeautifulSoup
+import psycopg2
+from psycopg2 import sql
+
+# URL of the website with the table
+url = 'https://y20india.in/literacy-rates-in-india/'
+
+def scrape_table(url):
+    # Send a GET request to the URL
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to load page {url}")
+
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # Find the table element
+    table = soup.find('table')
+    if not table:
+        raise Exception("No table found on the page")
+
+    # Extract table headers
+    headers = [th.text.strip() for th in table.find('tr').find_all('th')]
+
+    # Extract table rows
+    rows = []
+    for tr in table.find_all('tr')[1:]:  # Skip the header row
+        cells = [td.text.strip() for td in tr.find_all('td')]
+        rows.append(cells)
+
+    return headers, rows
+
+def store_data_in_postgresql(headers, rows):
+    # Database connection parameters
+    conn = psycopg2.connect(
+        dbname='your_database',
+        user='your_username',
+        password='your_password',
+        host='127.0.0.1',
+        port='5432'
+    )
+    cursor = conn.cursor()
+
+    # Create table SQL query
+    create_table_query = sql.SQL('''
+        CREATE TABLE IF NOT EXISTS scraped_data (
+            {}
+        )
+    ''').format(
+        sql.SQL(', ').join(
+            sql.Identifier(header) + sql.SQL(' TEXT') for header in headers
+        )
+    )
+    cursor.execute(create_table_query)
+    conn.commit()
+
+    # Insert data SQL query
+    insert_query = sql.SQL('''
+        INSERT INTO scraped_data ({})
+        VALUES ({})
+    ''').format(
+        sql.SQL(', ').join(map(sql.Identifier, headers)),
+        sql.SQL(', ').join(sql.Placeholder() * len(headers))
+    )
+
+    for row in rows:
+        cursor.execute(insert_query, row)
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+if __name__ == '__main__':
+    headers, rows = scrape_table(url)
+    store_data_in_postgresql(headers, rows)
+
+
+
+
+
+import requests
+from bs4 import BeautifulSoup
+url='https://y20india.in/literacy-rates-in-india/'
+
+r=requests.get(url)
+htmlContent=r.content
+#print(r)
+
+soup = BeautifulSoup(htmlContent, 'html.parser')
+table=soup.find("table")
+#print(table)
+headers=table.find_all("th")
+#print(headers)
+titles=[]
+
+for i in headers:
+    title=i.text
+    titles.append(title)
+
+print(titles)
