@@ -195,12 +195,11 @@ def update(data):
 
     if connection and cursor:
         try:
-            # Update data based on existing State
             update_query = '''UPDATE scraped_data
                               SET "Census 2011 Average" = %s, "Census 2011 Male" = %s, "Census 2011 Female" = %s,
                                   "NSO Survey 2017 Average" = %s, "NSO Survey 2017 Male" = %s, "NSO Survey 2017 Female" = %s 
                               WHERE "State/UT" = %s'''
-            update_values = data[1:] + [data[0]]  # Extract the index and append it at the end for the WHERE clause
+            update_values = data[1:] + [data[0]]  
             cursor.execute(update_query, update_values)
             connection.commit()
             print("Data updated successfully")
@@ -216,7 +215,6 @@ def delete(state):
 
     if connection and cursor:
         try:
-            # Delete data based on State
             delete_data = 'DELETE FROM scraped_data WHERE "State/UT" = %s'
             cursor.execute(delete_data, (state,))
             connection.commit()
@@ -227,13 +225,11 @@ def delete(state):
         finally:
             close_connection(connection)
 
-# Example data (replace with your actual data)
 new_data = ["HELLO", "120", "20", "130", "110", "125", "115"]
 insert(new_data)
 
 # select_all()
 
-# Example data (replace with actual values)
 # updated_data = ["India", "135", "25", "140", "122", "130", "120"]
 # update(updated_data)
 # select_all()
@@ -308,8 +304,6 @@ if __name__ == '__main__':
         print(f"An error occurred: {e}")
 
 select_all()
-
-# Example data (replace with actual values)
 updated_data = ["India", "135", "25", "140", "122", "130", "120"]
 update(updated_data)
 select_all()
