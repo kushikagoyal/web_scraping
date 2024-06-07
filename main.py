@@ -4,6 +4,7 @@ import psycopg2
 from psycopg2 import sql, OperationalError
 import csv
 
+
 url = 'https://y20india.in/literacy-rates-in-india/'
 
 def scrape_table(url):
@@ -140,6 +141,230 @@ def insert(data):
         finally:
             close_connection(connection)
 
+def select_all():
+    connection = connect()
+    cursor = create_cursor(connection)
+
+    if connection and cursor:
+        try:
+            select_query = "SELECT * FROM scraped_data"
+            cursor.execute(select_query)
+            rows = cursor.fetchall()
+
+            if rows:
+                for row in rows:
+                    print(row)
+            else:
+                print("No data found in scraped_data table.")
+
+        except Exception as error:
+            print("Got an Error:", error)
+        finally:
+            close_connection(connection)
+
+def update(data):
+    connection = connect()
+    cursor = create_cursor(connection)
+
+    if connection and cursor:
+        try:
+            update_query = '''UPDATE scraped_data
+                              SET "Census 2011 Average" = %s, "Census 2011 Male" = %s, "Census 2011 Female" = %s,
+                                  "NSO Survey 2017 Average" = %s, "NSO Survey 2017 Male" = %s, "NSO Survey 2017 Female" = %s 
+                              WHERE "State/UT" = %s'''
+            update_values = data[1:] + [data[0]]  
+            print("Executing update query:", update_query)
+            print("Update values:", update_values)
+            cursor.execute(update_query, update_values)
+            connection.commit()
+            print("Data updated successfully")
+
+        except Exception as error:
+            print("Error updating data:", error)
+        finally:
+            close_connection(connection)
+
+def delete(state):
+    connection = connect()
+    cursor = create_cursor(connection)
+
+    if connection and cursor:
+        try:
+            delete_data = 'DELETE FROM scraped_data WHERE "State/UT" = %s'
+            cursor.execute(delete_data, (state,))
+            connection.commit()
+            print("Data deleted successfully")
+
+        except Exception as error:
+            print("Got an Error:", error)
+        finally:
+            close_connection(connection)
+#new_data = ["HELLO", "120", "20", "130", "110", "125", "115"]
+#insert(new_data)
+
+#select_all()
+
+def export_to_csv(file_path):
+    connection = connect()
+    cursor = create_cursor(connection)
+
+    if connection and cursor:
+        try:
+            select_query = "SELECT * FROM scraped_data"
+            cursor.execute(select_query)
+            rows = cursor.fetchall()
+
+            if not rows:
+                print("No data found in scraped_data table.")
+                return
+
+            cursor.execute('SELECT column_name FROM information_schema.columns WHERE table_name = %s', ('scraped_data',))
+            headers = [row[0] for row in cursor.fetchall()]
+
+            with open(file_path, 'w', newline='') as csvfile:
+                csvwriter = csv.writer(csvfile)
+                csvwriter.writerow(headers)
+                csvwriter.writerows(rows)
+            print(f"Data exported successfully to {file_path}")
+
+        except Exception as e:
+            print(f"Failed to export data: {e}")
+        finally:
+            close_connection(connection)
+    else:
+        print("Failed to establish a connection to the database.")
+
+if __name__ == '__main__':
+    try:
+        headers, rows = scrape_table(url)
+        store_data_in_postgresql(headers, rows)
+        export_to_csv('scraped_data.csv')
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+#select_all()
+updated_data = ["HELLO", "135", "25", "140", "122", "130", "120"]
+update(updated_data)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# import psycopg2
+# from psycopg2 import sql
+
+# # Database connection details (modify these with your credentials)
+# hostname = "localhost"
+# database = "scraping_db"
+# username = "postgres"
+# pwd = "password"
+# port_id = 5432
+
+# def connect():
+#     """
+#     Connects to the PostgreSQL database.
+#     Returns a psycopg2 connection object or None on failure.
+#     """
+#     try:
+#         connection = psycopg2.connect(
+#             host=hostname,
+#             dbname=database,
+#             user=username,
+#             password=pwd,
+#             port=port_id
+#         )
+#         return connection
+#     except Exception as error:
+#         print("Error connecting to database:", error)
+#         return None
+
+# def create_cursor(connection):
+#     """
+#     Creates a cursor object from the provided connection.
+#     Returns a psycopg2 cursor object or None on failure.
+#     """
+#     if connection:
+#         try:
+#             return connection.cursor()
+#         except Exception as error:
+#             print("Error creating cursor:", error)
+#             return None
+#     else:
+#         print("Connection not established. Cannot create cursor.")
+#         return None
+
+# def close_connection(connection):
+#     """
+#     Closes the database connection if it's open.
+#     """
+#     if connection:
+#         try:
+#             connection.close()
+#         except Exception as error:
+#             print("Error closing database connection:", error)
+
+# def insert(data):
+#     """
+#     Inserts a new record into the 'scraped_data' table.
+#     Checks for duplicate Index_Name before insertion.
+
+#     Args:
+#         data (list): A list containing values to be inserted in the same
+#                      order as the table columns.
+#     """
+#     connection = connect()
+#     cursor = create_cursor(connection)
+
+#     if connection and cursor:
+#         try:
+#             # Check if record exists (prevents duplicate Index_Name)
+#             check_query = 'SELECT * FROM scraped_data WHERE "State/UT" = %s'
+#             cursor.execute(check_query, (data[1],))
+#             existing_record = cursor.fetchone()
+
+#             if not existing_record:
+#                 # Insert data if record doesn't exist
+#                 insert_data = '''INSERT INTO scraped_data 
+#                     ("State/UT", "Census 2011 Average", "Census 2011 Male" , "Census 2011 Female",
+#                                   "NSO Survey 2017 Average" , "NSO Survey 2017 Male" , "NSO Survey 2017 Female"  
+#                             )
+#                     VALUES (%s, %s, %s, %s, %s, %s, %s)'''
+#                 insert_values = data
+#                 cursor.execute(insert_data, insert_values)
+#                 connection.commit()
+#                 print("Data added successfully")
+#             else:
+#                 print(f"Record with State '{data[1]}' already exists. Skipping insertion.")
+
+#         except Exception as error:
+#             print("Got an Error:", error)
+#         finally:
+#             close_connection(connection)
+
 # def select_all():
 #     """
 #     Fetches all data from the 'scraped_data' table.
@@ -166,149 +391,78 @@ def insert(data):
 #             print("Got an Error:", error)
 #         finally:
 #             close_connection(connection)
-def select_all():
-    connection = connect()
-    cursor = create_cursor(connection)
-    rows = []
 
-    if connection and cursor:
-        try:
-            select_query = "SELECT * FROM scraped_data"
-            cursor.execute(select_query)
-            rows = cursor.fetchall()
-            if rows:
-                 for row in rows:
-                     print(row)
-            else:
-                 print("No data found in scraped_data table.")
+# def update(data):
+#     """
+#     Updates existing data based on the provided State.
 
-        except Exception as error:
-            print("Got an Error:", error)
-        finally:
-            close_connection(connection)
+#     Args:
+#         data (list): A list containing values to be updated in the same
+#                      order as the table columns. The first element should
+#                      be the State of the record to update.
+#     """
+#     connection = connect()
+#     cursor = create_cursor(connection)
 
-    return rows
+#     if connection and cursor:
+#         try:
+#             # Update data based on existing State
+#             update_query = '''UPDATE scraped_data
+#                               SET "Census 2011 Average" = %s, "Census 2011 Male" = %s, "Census 2011 Female" = %s,
+#                                   "NSO Survey 2017 Average" = %s, "NSO Survey 2017 Male" = %s, "NSO Survey 2017 Female" = %s 
+#                               WHERE "State/UT" = %s'''
+#             update_values = data[1:] + [data[0]]  # Extract the index and append it at the end for the WHERE clause
+#             cursor.execute(update_query, update_values)
+#             connection.commit()
+#             print("Data updated successfully")
 
-def update(data):
-    connection = connect()
-    cursor = create_cursor(connection)
+#         except Exception as error:
+#             print("Got an Error:", error)
+#         finally:
+#             close_connection(connection)
 
-    if connection and cursor:
-        try:
-            update_query = '''UPDATE scraped_data
-                              SET "Census 2011 Average" = %s, "Census 2011 Male" = %s, "Census 2011 Female" = %s,
-                                  "NSO Survey 2017 Average" = %s, "NSO Survey 2017 Male" = %s, "NSO Survey 2017 Female" = %s 
-                              WHERE "State/UT" = %s'''
-            update_values = data[1:] + [data[0]]  
-            cursor.execute(update_query, update_values)
-            connection.commit()
-            print("Data updated successfully")
+# def delete(state):
+#     """
+#     Deletes a record from the 'scraped_data' table based on the provided State.
 
-        except Exception as error:
-            print("Got an Error:", error)
-        finally:
-            close_connection(connection)
+#     Args:
+#         state (str): The State value of the record to delete.
+#     """
+#     connection = connect()
+#     cursor = create_cursor(connection)
 
-def delete(state):
-    connection = connect()
-    cursor = create_cursor(connection)
+#     if connection and cursor:
+#         try:
+#             # Delete data based on State
+#             delete_data = 'DELETE FROM scraped_data WHERE "State/UT" = %s'
+#             cursor.execute(delete_data, (state,))
+#             connection.commit()
+#             print("Data deleted successfully")
 
-    if connection and cursor:
-        try:
-            delete_data = 'DELETE FROM scraped_data WHERE "State/UT" = %s'
-            cursor.execute(delete_data, (state,))
-            connection.commit()
-            print("Data deleted successfully")
+#         except Exception as error:
+#             print("Got an Error:", error)
+#         finally:
+#             close_connection(connection)
 
-        except Exception as error:
-            print("Got an Error:", error)
-        finally:
-            close_connection(connection)
-
-new_data = ["HELLO", "120", "20", "130", "110", "125", "115"]
-insert(new_data)
+# # Example data (replace with your actual data)
+# new_data = ["HELLO", "120", "20", "130", "110", "125", "115"]
+# insert(new_data)
 
 # select_all()
 
-# updated_data = ["India", "135", "25", "140", "122", "130", "120"]
-# update(updated_data)
-# select_all()
+# # Example data (replace with actual values)
+# # updated_data = ["India", "135", "25", "140", "122", "130", "120"]
+# # update(updated_data)
+# # select_all()
 
-# delete("India")
-# select_all()
-def export_to_csv(file_path):
-    rows = select_all()
+# # delete("India")
+# # select_all()
 
-    if not rows:
-        print("No data to export.")
-        return
 
-    try:
-        con = psycopg2.connect(
-            dbname='scraping_db',
-            user='postgres',
-            password='password',
-            host='127.0.0.1',
-            port='5432'
-        )
-        cursor = con.cursor()
-        cursor.execute('SELECT column_name FROM information_schema.columns WHERE table_name = %s', ('scraped_data',))
-        headers = [row[0] for row in cursor.fetchall()]
-    except Exception as e:
-        raise Exception(f"Failed to fetch headers: {e}")
-    finally:
-        cursor.close()
-        con.close()
 
-    try:
-        with open(file_path, 'w', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile)
-            csvwriter.writerow(headers)
-            csvwriter.writerows(rows)
-    except Exception as e:
-        raise Exception(f"Failed to write CSV file: {e}")
-# def export_to_csv(file_path):
-#     rows = select_all()
+#select_all()
 
-#     try:
-#         con = psycopg2.connect(
-#             dbname='scraping_db',
-#             user='postgres',
-#             password='password',
-#             host='127.0.0.1',
-#             port='5432'
-#         )
-#         cursor = con.cursor()
-#         cursor.execute('SELECT column_name FROM information_schema.columns WHERE table_name = %s', ('scraped_data',))
-#         headers = [row[0] for row in cursor.fetchall()]
-#     except Exception as e:
-#         raise Exception(f"Failed to fetch headers: {e}")
-#     finally:
-#         cursor.close()
-#         con.close()
-
-#     try:
-#         with open(file_path, 'w', newline='') as csvfile:
-#             csvwriter = csv.writer(csvfile)
-#             csvwriter.writerow(headers)
-#             csvwriter.writerows(rows)
-#     except Exception as e:
-#         raise Exception(f"Failed to write CSV file: {e}")
-
-if __name__ == '__main__':
-    try:
-        headers, rows = scrape_table(url)
-        store_data_in_postgresql(headers, rows)
-        export_to_csv('scraped_data.csv')
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-select_all()
-updated_data = ["India", "135", "25", "140", "122", "130", "120"]
-update(updated_data)
-select_all()
-
-# delete("India")
+#delete("India")
 # select_all()
 
 
